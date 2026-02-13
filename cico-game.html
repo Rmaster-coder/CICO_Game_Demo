@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CICO Checkpoint Game (Mini)</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --muted:#8aa0c6; --text:#e7efff; --good:#3ddc97; --bad:#ff5c7a; --warn:#ffd166; }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin:0; background:linear-gradient(160deg,#070b14,#0b1220 55%, #0a1730); color:var(--text); }
+    header { padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.08); display:flex; gap:14px; align-items:center; justify-content:space-between; }
+    header h1 { margin:0; font-size:16px; letter-spacing:.4px; font-weight:700; }
+    header .meta { display:flex; gap:14px; align-items:center; color:var(--muted); font-size:13px; }
+    main { padding:18px; max-width:1100px; margin:0 auto; display:grid; grid-template-columns: 1.1fr .9fr; gap:16px; }
+    .card { background:rgba(17,26,46,.75); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    .row { display:flex; gap:12px; flex-wrap:wrap; }
+    .col { flex:1; min-width:230px; }
+    .label { color:var(--muted); font-size:12px; margin-bottom:6px; text-transform:uppercase; letter-spacing:.08em; }
+    .big { font-size:22px; font-weight:800; margin:2px 0 10px; }
+    button {
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      transition:.15s transform, .15s background;
+      font-weight:650;
+    }
+    button:hover { background:rgba(255,255,255,.10); transform: translateY(-1px); }
+    button.primary { background:rgba(61,220,151,.12); border-color: rgba(61,220,151,.35); }
+    button.danger  { background:rgba(255,92,122,.12); border-color: rgba(255,92,122,.35); }
+    button.warn    { background:rgba(255,209,102,.10); border-color: rgba(255,209,102,.35); }
+    button:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted); border:1px solid rgba(255,255,255,.12); }
+    .pill b { color:var(--text); }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
+    .item {
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      padding:10px;
+      background:rgba(255,255,255,.04);
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:92px;
+    }
+    .item .name { font-weight:750; }
+    .item .desc { color:var(--muted); font-size:12px; line-height:1.25; }
+    .item .tags { display:flex; gap:6px; flex-wrap:wrap; }
+    .tag { font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.14); color:var(--muted); }
+    .tag.good { border-color: rgba(61,220,151,.35); color: rgba(61,220,151,.92); }
+    .tag.bad { border-color: rgba(255,92,122,.35); color: rgba(255,92,122,.95); }
+    .tag.warn { border-color: rgba(255,209,102,.35); color: rgba(255,209,102,.95); }
+    .log {
+      height:220px;
+      overflow:auto;
+      border-radius:14px;
+      padding:10px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.18);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:12px;
+      line-height:1.4;
+      white-space:pre-wrap;
+    }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:12px; padding:2px 7px; border-radius:8px; border:1px solid rgba(255,255,255,.16); color:var(--muted); }
+    .modal-backdrop {
+      position:fixed; inset:0; background:rgba(0,0,0,.55);
+      display:none; align-items:center; justify-content:center; padding:16px;
+    }
+    .modal {
+      width:min(720px, 100%);
+      background:rgba(17,26,46,.95);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:18px;
+      padding:14px;
+      box-shadow:0 20px 60px rgba(0,0,0,.45);
+    }
+    .modal h2 { margin:0 0 8px; font-size:16px; }
+    .modal p { margin:0 0 10px; color:var(--muted); font-size:13px; line-height:1.35; }
+    .modal .checks { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0 12px; }
+    .check {
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      padding:10px;
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .check input { margin-top:2px; transform:scale(1.15); }
+    .check .t { font-weight:700; }
+    .check .s { color:var(--muted); font-size:12px; line-height:1.25; }
+    textarea {
+      width:100%; min-height:70px; resize:vertical;
+      border-radius:14px; border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.18); color:var(--text);
+      padding:10px;
+    }
+    footer { padding:0 18px 18px; max-width:1100px; margin:0 auto; color:var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Checkpoint Operator — CICO Mini Game</h1>
+  <div class="meta">
+    <span class="pill">Score: <b id="score">0</b></span>
+    <span class="pill">People processed: <b id="processed">0</b></span>
+    <span class="pill">Strikes: <b id="strikes">0</b>/3</span>
+    <span class="pill">Streak: <b id="streak">0</b></span>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="row">
+      <div class="col">
+        <div class="label">Current person</div>
+        <div class="big" id="personName">—</div>
+        <div class="row">
+          <span class="pill">Role: <b id="personRole">—</b></span>
+          <span class="pill">Direction: <b id="personDir">—</b></span>
+          <span class="pill">Risk: <b id="personRisk">—</b></span>
+        </div>
+      </div>
+      <div class="col">
+        <div class="label">ID check</div>
+        <p style="margin:0 0 10px; color:var(--muted); font-size:13px; line-height:1.35">
+          Decide if the badge matches the person. If it’s a mismatch, you must deny access and log it.
+        </p>
+        <div class="row">
+          <button class="primary" id="btnIdMatch">ID matches</button>
+          <button class="danger" id="btnIdMismatch">ID mismatch</button>
+        </div>
+        <div style="margin-top:10px; color:var(--muted); font-size:12px;">
+          Tip: Use <span class="kbd">1</span> for match, <span class="kbd">2</span> for mismatch.
+        </div>
+      </div>
+    </div>
+
+    <hr style="border:none; border-top:1px solid rgba(255,255,255,.08); margin:14px 0;">
+
+    <div class="row">
+      <div class="col">
+        <div class="label">Tray items (inspect + flag)</div>
+        <p style="margin:0 0 10px; color:var(--muted); font-size:13px; line-height:1.35">
+          Click items you want to <b>flag</b> for secondary inspection.
+          Some items can hide other items.
+        </p>
+        <div class="grid" id="itemsGrid"></div>
+      </div>
+
+      <div class="col">
+        <div class="label">Screening</div>
+        <p style="margin:0 0 10px; color:var(--muted); font-size:13px; line-height:1.35">
+          Run screening. If there’s an alarm, you should escalate: 2nd pass, then 3rd pass.
+        </p>
+        <div class="row">
+          <button class="primary" id="btnScreen">Run screening pass</button>
+          <button class="warn" id="btnResolve">Resolve outcome / decide</button>
+        </div>
+
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+          <span class="pill">Pass #: <b id="passNo">0</b>/3</span>
+          <span class="pill">Alarm: <b id="alarmState">—</b></span>
+          <span class="pill">Flags: <b id="flagCount">0</b></span>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="label">Operator log</div>
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="card">
+    <div class="label">How to win</div>
+    <p style="margin:0 0 10px; color:var(--muted); font-size:13px; line-height:1.45">
+      Process people accurately. Catch restricted/prohibited items and handle alarms correctly.
+      Incorrectly allowing an unresolved alarm or prohibited item adds strikes. 3 strikes ends the run.
+    </p>
+
+    <div class="label">Decisions you’ll make</div>
+    <div class="item" style="margin-bottom:10px;">
+      <div class="name">Allow</div>
+      <div class="desc">Only if ID is valid and screening is cleared, and no prohibited items remain.</div>
+      <div class="tags"><span class="tag good">Correct workflow</span></div>
+    </div>
+    <div class="item" style="margin-bottom:10px;">
+      <div class="name">Deny / Send back</div>
+      <div class="desc">Use when ID mismatch or unresolved alarm / prohibited item is present.</div>
+      <div class="tags"><span class="tag bad">Security-first</span></div>
+    </div>
+    <div class="item">
+      <div class="name">Log incident</div>
+      <div class="desc">When someone fails screening, tries to bypass, has mismatch, or prohibited item found.</div>
+      <div class="tags"><span class="tag warn">Documentation</span></div>
+    </div>
+
+    <hr style="border:none; border-top:1px solid rgba(255,255,255,.08); margin:14px 0;">
+
+    <div class="row">
+      <button id="btnNewRun">New run</button>
+      <button id="btnHelp">Help</button>
+    </div>
+
+    <p style="margin:12px 0 0; color:var(--muted); font-size:12px; line-height:1.35">
+      This is a simplified training-style game. Don’t put real site details, real procedures, or real restricted lists into it.
+    </p>
+  </aside>
+</main>
+
+<footer>
+  Controls: <span class="kbd">1</span> ID matches · <span class="kbd">2</span> ID mismatch · <span class="kbd">S</span> screen pass · <span class="kbd">R</span> resolve decision · <span class="kbd">N</span> next person (after resolve)
+</footer>
+
+<!-- Incident Modal -->
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h2 id="modalTitle">Resolve outcome</h2>
+    <p id="modalHint">Choose an outcome and (if needed) complete the incident log.</p>
+
+    <div class="row" style="margin:8px 0 10px;">
+      <button class="primary" id="btnAllow">Allow entry/exit</button>
+      <button class="danger" id="btnDeny">Deny / send back</button>
+      <button class="warn" id="btnLogOnly">Log incident only</button>
+      <button id="btnCloseModal">Close</button>
+    </div>
+
+    <div class="checks" id="checksWrap"></div>
+
+    <div class="label">Notes (optional but boosts score on incidents)</div>
+    <textarea id="notes" placeholder="Write a short, neutral note about what happened..."></textarea>
+
+    <div class="row" style="margin-top:12px; justify-content:flex-end;">
+      <button class="primary" id="btnSubmitResolution">Submit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * CICO Mini Game — simplified checkpoint workflow
+ * - ID match/mismatch
+ * - Tray items (some hide contraband)
+ * - Screening passes up to 3
+ * - Resolve: allow / deny / log
+ * - Score + strikes
+ */
+
+const UI = {
+  score: document.getElementById('score'),
+  processed: document.getElementById('processed'),
+  strikes: document.getElementById('strikes'),
+  streak: document.getElementById('streak'),
+  personName: document.getElementById('personName'),
+  personRole: document.getElementById('personRole'),
+  personDir: document.getElementById('personDir'),
+  personRisk: document.getElementById('personRisk'),
+  itemsGrid: document.getElementById('itemsGrid'),
+  passNo: document.getElementById('passNo'),
+  alarmState: document.getElementById('alarmState'),
+  flagCount: document.getElementById('flagCount'),
+  log: document.getElementById('log'),
+
+  btnIdMatch: document.getElementById('btnIdMatch'),
+  btnIdMismatch: document.getElementById('btnIdMismatch'),
+  btnScreen: document.getElementById('btnScreen'),
+  btnResolve: document.getElementById('btnResolve'),
+  btnNewRun: document.getElementById('btnNewRun'),
+  btnHelp: document.getElementById('btnHelp'),
+
+  // modal
+  backdrop: document.getElementById('modalBackdrop'),
+  modalTitle: document.getElementById('modalTitle'),
+  modalHint: document.getElementById('modalHint'),
+  btnAllow: document.getElementById('btnAllow'),
+  btnDeny: document.getElementById('btnDeny'),
+  btnLogOnly: document.getElementById('btnLogOnly'),
+  btnCloseModal: document.getElementById('btnCloseModal'),
+  btnSubmitResolution: document.getElementById('btnSubmitResolution'),
+  checksWrap: document.getElementById('checksWrap'),
+  notes: document.getElementById('notes')
+};
+
+const RNG = (min, max) => Math.floor(Math.random()*(max-min+1))+min;
+const pick = (arr) => arr[RNG(0, arr.length-1)];
+const now = () => new Date().toLocaleTimeString();
+
+const ITEM_DB = [
+  // safe / normal
+  { id:'keys', name:'Keys', desc:'Common metal items.', tag:'Safe', metal: true, risk:0 },
+  { id:'belt', name:'Belt', desc:'Metal buckle may trigger alarms.', tag:'Safe', metal: true, risk:1 },
+  { id:'coins', name:'Coins', desc:'Loose change.', tag:'Safe', metal: true, risk:1 },
+  { id:'watch', name:'Watch', desc:'May trigger detector.', tag:'Safe', metal: true, risk:1 },
+  { id:'wallet', name:'Wallet', desc:'Normal personal item.', tag:'Safe', metal: false, risk:0 },
+  { id:'earbuds', name:'Earbuds', desc:'Personal electronics; may be restricted in certain zones.', tag:'Restricted', metal:false, risk:2 },
+
+  // containers (can hide)
+  { id:'lunchbox', name:'Lunchbox', desc:'Container. Check inside.', tag:'Safe', metal:false, risk:1, canHide:true },
+  { id:'pouch', name:'Small pouch', desc:'Container. Check inside.', tag:'Safe', metal:false, risk:1, canHide:true },
+  { id:'tissuebox', name:'Tissue box', desc:'Container. Check for concealment.', tag:'Safe', metal:false, risk:2, canHide:true },
+
+  // prohibited (generic)
+  { id:'storage', name:'Data storage device', desc:'Not permitted past checkpoint.', tag:'Prohibited', metal:true, risk:5 },
+  { id:'phone', name:'Phone', desc:'Personal device; Not permitted past checkpoint.', tag:'Prohibited', metal:true, risk:3 },
+  { id:'tool', name:'Unapproved tool', desc:'Tool not cleared for entry.', tag:'Prohibited', metal:true, risk:4 },
+  { id:'badge', name:'Extra access credential', desc:'Unregistered credential.', tag:'Prohibited', metal:false, risk:5 }
+];
+
+const PEOPLE_DB = [
+  { role:'Staff', risk:'Low' },
+  { role:'Contractor', risk:'Medium' },
+  { role:'Visitor', risk:'Medium' },
+  { role:'Delivery', risk:'High' }
+];
+
+const NAMES = ["Asha","Noah","Mia","Ethan","Priya","Arjun","Sofia","Liam","Zara","Omar","Hana","Leo","Ivy","Kai","Nina","Sam"];
+
+const DIRS = ["Entering secure zone", "Exiting secure zone"];
+
+const state = {
+  score: 0,
+  processed: 0,
+  strikes: 0,
+  streak: 0,
+
+  person: null,
+  idChecked: null,      // true/false
+  idMismatch: false,
+
+  items: [],            // {base, hidden?, flagged, revealedHidden}
+  passes: 0,
+  alarm: null,          // 'NONE' | 'ALARM'
+  resolved: false,
+  mustLog: false,
+  runActive: true
+};
+
+function logLine(msg) {
+  UI.log.textContent += `[${now()}] ${msg}\n`;
+  UI.log.scrollTop = UI.log.scrollHeight;
+}
+
+function resetLog() {
+  UI.log.textContent = "";
+  logLine("New run started. Process the queue.");
+}
+
+function updateHUD() {
+  UI.score.textContent = state.score;
+  UI.processed.textContent = state.processed;
+  UI.strikes.textContent = state.strikes;
+  UI.streak.textContent = state.streak;
+
+  UI.passNo.textContent = state.passes;
+  UI.alarmState.textContent = state.alarm ?? "—";
+  UI.flagCount.textContent = state.items.filter(i => i.flagged).length;
+
+  UI.btnScreen.disabled = !state.runActive || state.idChecked === null || state.resolved || state.passes >= 3;
+  UI.btnResolve.disabled = !state.runActive || state.idChecked === null || state.resolved || state.passes === 0;
+
+  UI.btnIdMatch.disabled = !state.runActive || state.idChecked !== null;
+  UI.btnIdMismatch.disabled = !state.runActive || state.idChecked !== null;
+}
+
+function makePerson() {
+  const base = pick(PEOPLE_DB);
+  const name = `${pick(NAMES)} ${pick(["Khan","Saha","Lee","Nguyen","Singh","Patel","Ahmed","Kim","Brown","Garcia"])}`;
+  const dir = pick(DIRS);
+
+  // 10% ID mismatch chance
+  const idMismatch = Math.random() < 0.10;
+
+  // choose items count based on role/risk
+  let count = base.role === "Delivery" ? RNG(3,5) : RNG(2,4);
+
+  // assemble base items
+  const items = [];
+  for (let i=0; i<count; i++) {
+    items.push({ base: pick(ITEM_DB), flagged:false, revealedHidden:false, hidden:null });
+  }
+
+  // ensure variety
+  // add a container sometimes
+  if (!items.some(i=>i.base.canHide) && Math.random() < 0.45) {
+    items.push({ base: pick(ITEM_DB.filter(x=>x.canHide)), flagged:false, revealedHidden:false, hidden:null });
+  }
+
+  // contraband logic
+  // probability based on risk
+  const riskFactor = base.role === "Delivery" ? 0.35 : base.role === "Contractor" ? 0.25 : 0.18;
+
+  const hasProhibited = Math.random() < riskFactor;
+  const prohibitedItem = hasProhibited ? pick(ITEM_DB.filter(x=>x.tag==="Prohibited")) : null;
+
+  // place contraband either directly or hidden in a container
+  if (prohibitedItem) {
+    const containerIdx = items.findIndex(i=>i.base.canHide);
+    if (containerIdx !== -1 && Math.random() < 0.7) {
+      items[containerIdx].hidden = prohibitedItem;
+      items[containerIdx].base = Object.assign({}, items[containerIdx].base, { desc: items[containerIdx].base.desc + " (Feels heavier than normal?)" });
+    } else {
+      items.push({ base: prohibitedItem, flagged:false, revealedHidden:false, hidden:null });
+    }
+  }
+
+  // add restricted personal device sometimes
+  if (Math.random() < 0.35) {
+    items.push({ base: pick(ITEM_DB.filter(x=>x.tag==="Restricted")), flagged:false, revealedHidden:false, hidden:null });
+  }
+
+  // normalize
+  return {
+    name, role: base.role, dir,
+    risk: base.risk,
+    idMismatch,
+    items
+  };
+}
+
+function renderPerson() {
+  const p = state.person;
+  UI.personName.textContent = p.name;
+  UI.personRole.textContent = p.role;
+  UI.personDir.textContent = p.dir;
+  UI.personRisk.textContent = p.risk;
+
+  UI.itemsGrid.innerHTML = "";
+  for (const it of state.items) {
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.dataset.id = it.base.id;
+
+    const name = document.createElement('div');
+    name.className = 'name';
+    name.textContent = it.base.name + (it.flagged ? " ✅ Flagged" : "");
+
+    const desc = document.createElement('div');
+    desc.className = 'desc';
+    desc.textContent = it.revealedHidden && it.hidden
+      ? `${it.base.desc}\nFound inside: ${it.hidden.name} (${it.hidden.tag})`
+      : it.base.desc;
+
+    const tags = document.createElement('div');
+    tags.className = 'tags';
+    const tag = document.createElement('span');
+    tag.className = 'tag ' + (it.base.tag==="Safe" ? "" : it.base.tag==="Restricted" ? "warn" : "bad");
+    tag.textContent = it.base.tag;
+    tags.appendChild(tag);
+
+    if (it.base.canHide) {
+      const t2 = document.createElement('span');
+      t2.className = 'tag warn';
+      t2.textContent = 'Container';
+      tags.appendChild(t2);
+    }
+    if (it.flagged) {
+      const t3 = document.createElement('span');
+      t3.className = 'tag good';
+      t3.textContent = 'Flagged';
+      tags.appendChild(t3);
+    }
+
+    el.appendChild(name);
+    el.appendChild(desc);
+    el.appendChild(tags);
+
+    el.addEventListener('click', () => {
+      if (state.resolved || state.idChecked === null) return;
+      it.flagged = !it.flagged;
+
+      // If it's a container and flagged, reveal hidden item (simulated secondary inspection)
+      if (it.base.canHide && it.flagged && it.hidden) {
+        it.revealedHidden = true;
+        state.mustLog = true;
+        logLine(`Secondary inspection: hidden item discovered in ${it.base.name}.`);
+        // bonus for finding it early
+        state.score += 30;
+      }
+      renderPerson();
+      updateHUD();
+    });
+
+    UI.itemsGrid.appendChild(el);
+  }
+}
+
+function startNewPerson() {
+  state.person = makePerson();
+  state.idChecked = null;
+  state.idMismatch = false;
+  state.items = state.person.items;
+  state.passes = 0;
+  state.alarm = null;
+  state.resolved = false;
+  state.mustLog = false;
+
+  logLine(`Next person: ${state.person.name} (${state.person.role}) — ${state.person.dir}.`);
+  renderPerson();
+  updateHUD();
+}
+
+function gameOver() {
+  state.runActive = false;
+  logLine("RUN ENDED: Too many strikes.");
+  alert(`Run ended.\nScore: ${state.score}\nPeople processed: ${state.processed}\n\nTip: Don’t allow unresolved alarms or prohibited items.`);
+  updateHUD();
+}
+
+function addStrike(reason) {
+  state.strikes += 1;
+  state.streak = 0;
+  logLine(`STRIKE: ${reason}`);
+  if (state.strikes >= 3) gameOver();
+}
+
+function setIdCheck(isMatch) {
+  state.idChecked = true;
+  state.idMismatch = !isMatch || state.person.idMismatch; // if person is mismatch, even "match" is wrong
+
+  if (isMatch && !state.person.idMismatch) {
+    state.score += 10;
+    logLine("ID check: match confirmed.");
+  } else {
+    state.mustLog = true;
+    logLine("ID check: mismatch detected (or simulated mismatch).");
+  }
+  updateHUD();
+}
+
+function computeAlarmForPass() {
+  // alarms are more likely when metal items or prohibited items exist
+  const hasProhibited = state.items.some(i => i.base.tag === "Prohibited" || (i.hidden && !i.revealedHidden));
+  const metalCount = state.items.filter(i => i.base.metal).length;
+
+  // base alarm probability
+  let p = 0.10 + metalCount * 0.10;
+  if (hasProhibited) p += 0.35;
+
+  // better outcome if user flagged things
+  const flags = state.items.filter(i => i.flagged).length;
+  p -= Math.min(0.18, flags * 0.06);
+
+  // later passes slightly reduce false alarms
+  p -= (state.passes-1) * 0.08;
+
+  p = Math.max(0.05, Math.min(0.85, p));
+  return Math.random() < p ? "ALARM" : "NONE";
+}
+
+function runScreeningPass() {
+  if (state.idChecked === null || state.resolved || state.passes >= 3) return;
+  state.passes += 1;
+  state.alarm = computeAlarmForPass();
+
+  if (state.alarm === "ALARM") {
+    state.mustLog = true;
+    logLine(`Screening pass #${state.passes}: ALARM.`);
+    // encourage escalation
+    if (state.passes < 3) state.score += 2;
+  } else {
+    logLine(`Screening pass #${state.passes}: CLEAR.`);
+    state.score += 12;
+  }
+  updateHUD();
+}
+
+function openModal() {
+  // build checkboxes (incident log prompts)
+  UI.checksWrap.innerHTML = "";
+  const checks = [
+    { id:"id_issue", title:"ID / badge issue", sub:"Mismatch or suspicious credential." },
+    { id:"alarm", title:"Screening alarm", sub:"Alarm occurred and required escalation." },
+    { id:"prohibited", title:"Prohibited item found", sub:"A prohibited item was found/attempted." },
+    { id:"restricted", title:"Restricted personal item", sub:"Restricted personal item present." }
+  ];
+
+  for (const c of checks) {
+    const wrap = document.createElement('label');
+    wrap.className = "check";
+    const box = document.createElement('input');
+    box.type = "checkbox";
+    box.id = c.id;
+    const text = document.createElement('div');
+    text.innerHTML = `<div class="t">${c.title}</div><div class="s">${c.sub}</div>`;
+    wrap.appendChild(box);
+    wrap.appendChild(text);
+    UI.checksWrap.appendChild(wrap);
+  }
+
+  // prefill likely ones
+  const hasProhibited = state.items.some(i => i.base.tag==="Prohibited") || state.items.some(i => i.hidden && i.revealedHidden && i.hidden.tag==="Prohibited");
+  const hasRestricted = state.items.some(i => i.base.tag==="Restricted");
+  if (state.idMismatch) document.getElementById("id_issue").checked = true;
+  if (state.alarm === "ALARM") document.getElementById("alarm").checked = true;
+  if (hasProhibited) document.getElementById("prohibited").checked = true;
+  if (hasRestricted) document.getElementById("restricted").checked = true;
+
+  UI.notes.value = "";
+  UI.backdrop.style.display = "flex";
+}
+
+function closeModal() {
+  UI.backdrop.style.display = "none";
+}
+
+let modalChoice = null; // 'ALLOW' | 'DENY' | 'LOG'
+
+function setModalChoice(choice) {
+  modalChoice = choice;
+  UI.btnAllow.classList.toggle("primary", choice === "ALLOW");
+  UI.btnDeny.classList.toggle("danger", choice === "DENY");
+  UI.btnLogOnly.classList.toggle("warn", choice === "LOG");
+}
+
+function resolveDecision() {
+  if (state.idChecked === null || state.resolved || state.passes === 0) return;
+  openModal();
+  setModalChoice("ALLOW"); // default
+}
+
+function submitResolution() {
+  if (!modalChoice) return;
+
+  // gather facts
+  const hasHiddenUnrevealed = state.items.some(i => i.hidden && !i.revealedHidden);
+  const hasProhibitedVisible = state.items.some(i => i.base.tag==="Prohibited");
+  const hasProhibitedFound = state.items.some(i => i.hidden && i.revealedHidden && i.hidden.tag==="Prohibited");
+  const hasProhibited = hasProhibitedVisible || hasProhibitedFound || hasHiddenUnrevealed;
+  const hasRestricted = state.items.some(i => i.base.tag==="Restricted");
+
+  const alarmClear = state.alarm === "NONE";
+  const unresolvedAlarm = state.alarm === "ALARM" && state.passes < 3; // if alarm occurred and you didn't exhaust passes, treat as unresolved risk
+
+  const checked = {
+    id_issue: document.getElementById("id_issue").checked,
+    alarm: document.getElementById("alarm").checked,
+    prohibited: document.getElementById("prohibited").checked,
+    restricted: document.getElementById("restricted").checked
+  };
+
+  const notes = UI.notes.value.trim();
+  const needsLog = state.mustLog || checked.id_issue || checked.alarm || checked.prohibited || checked.restricted;
+
+  // evaluate correctness
+  let ok = true;
+  let reasons = [];
+
+  // ID mismatch must be denied + logged
+  if (state.idMismatch) {
+    if (modalChoice !== "DENY") { ok = false; reasons.push("Allowed despite ID mismatch."); }
+    if (!needsLog) { ok = false; reasons.push("No log on ID mismatch."); }
+  }
+
+  // prohibited must be denied + logged
+  if (hasProhibited) {
+    if (modalChoice !== "DENY") { ok = false; reasons.push("Allowed despite prohibited item."); }
+    if (!needsLog) { ok = false; reasons.push("No log on prohibited item."); }
+  }
+
+  // unresolved alarm should not be allowed
+  if (unresolvedAlarm && modalChoice === "ALLOW") {
+    ok = false; reasons.push("Allowed with unresolved alarm (should escalate/deny).");
+  }
+
+  // restricted items: not always “fail” in this simplified game, but should be handled (deny or log)
+  if (hasRestricted && modalChoice === "ALLOW" && !needsLog) {
+    ok = false; reasons.push("Allowed restricted item without logging/handling.");
+  }
+
+  // if everything is clear, allowing is best
+  if (!state.idMismatch && !hasProhibited && alarmClear) {
+    if (modalChoice !== "ALLOW") { ok = false; reasons.push("Denied even though cleared."); }
+  }
+
+  // scoring
+  if (ok) {
+    state.processed += 1;
+    state.streak += 1;
+
+    let gain = 35;
+    if (needsLog) gain += 10;
+    if (notes.length >= 12) gain += 8;
+    if (state.passes === 3 && state.alarm === "ALARM") gain += 8; // you escalated fully
+    if (modalChoice === "DENY" && (state.idMismatch || hasProhibited || unresolvedAlarm)) gain += 10;
+
+    state.score += gain;
+    logLine(`RESOLVED: ✅ Correct decision (${modalChoice}). +${gain} score.`);
+  } else {
+    state.processed += 1;
+    addStrike(reasons.join(" "));
+    state.score = Math.max(0, state.score - 15);
+    logLine(`RESOLVED: ❌ Incorrect decision (${modalChoice}). -15 score.`);
+    if (needsLog && notes.length >= 12) state.score += 5; // partial credit for documentation quality
+  }
+
+  state.resolved = true;
+  closeModal();
+  updateHUD();
+
+  // auto move to next if run still active
+  if (state.runActive) {
+    logLine("Press N for next person.");
+  }
+}
+
+function newRun() {
+  state.score = 0;
+  state.processed = 0;
+  state.strikes = 0;
+  state.streak = 0;
+  state.runActive = true;
+
+  resetLog();
+  startNewPerson();
+}
+
+function help() {
+  alert(
+`CICO Mini Game — Quick Help
+
+1) ID Check:
+   - Choose ID matches or mismatch.
+   - If mismatch: you should DENY and LOG.
+
+2) Tray Items:
+   - Click items to FLAG for secondary inspection.
+   - Flagging containers can reveal hidden items.
+
+3) Screening:
+   - Run a pass. If ALARM, do another pass (up to 3).
+
+4) Resolve:
+   - ALLOW only if cleared.
+   - DENY if ID mismatch, prohibited item, or unresolved alarm.
+   - LOG incidents for alarms, mismatch, prohibited findings.
+
+Hotkeys:
+1 = ID matches, 2 = ID mismatch, S = screen, R = resolve, N = next person`);
+}
+
+function nextPersonIfReady() {
+  if (!state.runActive) return;
+  if (!state.resolved) {
+    logLine("You must resolve the outcome before moving to the next person.");
+    return;
+  }
+  startNewPerson();
+}
+
+// Wire up buttons
+UI.btnIdMatch.addEventListener('click', () => setIdCheck(true));
+UI.btnIdMismatch.addEventListener('click', () => setIdCheck(false));
+UI.btnScreen.addEventListener('click', runScreeningPass);
+UI.btnResolve.addEventListener('click', resolveDecision);
+UI.btnNewRun.addEventListener('click', newRun);
+UI.btnHelp.addEventListener('click', help);
+
+// Modal buttons
+UI.btnAllow.addEventListener('click', () => setModalChoice("ALLOW"));
+UI.btnDeny.addEventListener('click', () => setModalChoice("DENY"));
+UI.btnLogOnly.addEventListener('click', () => setModalChoice("LOG"));
+UI.btnCloseModal.addEventListener('click', closeModal);
+UI.btnSubmitResolution.addEventListener('click', submitResolution);
+
+// Keyboard shortcuts
+window.addEventListener('keydown', (e) => {
+  if (UI.backdrop.style.display === "flex") {
+    if (e.key === "Escape") closeModal();
+    return;
+  }
+  const k = e.key.toLowerCase();
+  if (k === "1") setIdCheck(true);
+  if (k === "2") setIdCheck(false);
+  if (k === "s") runScreeningPass();
+  if (k === "r") resolveDecision();
+  if (k === "n") nextPersonIfReady();
+});
+
+// Start
+newRun();
+updateHUD();
+</script>
+</body>
+</html>
